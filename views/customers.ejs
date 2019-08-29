@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel='stylesheet' href='/stylesheets/style.css' />
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+    integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+    crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+    integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+    crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+    crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+    <a class="navbar-brand" href="/customers/<%= customer.id %>">Credit card management</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+      aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarCollapse">
+      <ul class="navbar-nav mr-auto">
+      </ul>
+    </div>
+  </nav>
+  <main role="main" class="container">
+    <p>Customer: <b><%= customer.id %></b></p>
+    <h2>Add new card</h2>
+    <div class="jumbotron">
+      <form action="/customers/<%= customer.id %>/cards/add" method="post" id="payment-form" class="col-7">
+        <div class="form-group">
+          <label for="cardholder_name">Cardholder name</label>
+          <input type="text" class="form-control" name="cardholder_name" id="cardholder_name"
+            placeholder="Enter name" />
+        </div>
+        <div class="form-group">
+          <label for="card-element">Credit card</label>
+          <div id="card-element"></div>
+          <div id="card-errors" role="alert"></div>
+        </div>
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" name="default_source" id="default_source" />
+          <label class="form-check-label" for="default_source">Make it default<br /><br /></label>
+        </div>
+        <button type="submit" class="btn btn-primary">Save card</button>
+      </form>
+    </div>
+
+    <h2>Cards</h2>
+    <ul class="list-group">
+      <% cards.data.forEach(function(card) { %>
+      <li class="list-group-item">
+        <table class="table table-borderless">
+          <tbody>
+            <tr>
+              <th>ID</th>
+              <td><%= card.id %></td>
+              <td><a href="/customers/<%= customer.id %>/cards/<%= card.id %>/edit">Edit</a></td>
+              <td><a href="/customers/<%= customer.id %>/cards/<%= card.id %>/editcvc">Edit CVC</a></td>
+              <td>
+                <% if (customer.default_source != card.id ) { %>
+                <a href="/customers/<%= customer.id %>/cards/<%= card.id %>/delete">Delete</a>
+                <% } %>
+              </td>
+            </tr>
+            <tr>
+              <th>last4</th>
+              <td><%= card.brand %> - *****<%= card.last4 %>
+                <% if (customer.default_source == card.id ) { %>
+                <span class="badge badge-primary">Default</span>
+                <% } %>
+              </td>
+              <td colspan="3"></td>
+            </tr>
+            <tr>
+              <th>cardholder name</th>
+              <td><%= card.name %></td>
+              <td colspan="3"></td>
+            </tr>
+            <tr>
+              <th>expiration</th>
+              <td><%= card.exp_month.toString().padStart(2, '0') %>/<%= card.exp_year.toString().substr(-2) %></td>
+              <td colspan="3"></td>
+            </tr>
+            <tr>
+              <th>zip code</th>
+              <td><%= card.address_zip %></td>
+              <td colspan="3"></td>
+            </tr>
+          </tbody>
+        </table>
+      </li>
+      <% }); %>
+    </ul>
+    <br /><br />
+    <h2>Subscriptions</h2>
+    <ul class="list-group">
+      <% subscriptions.data.forEach(function(subscription) { %>
+      <li class="list-group-item">
+        <table class="table table-borderless">
+          <tbody>
+            <tr>
+              <th>ID</th>
+              <td><%= subscription.id %></td>
+            </tr>
+            <tr>
+              <th>Product</th>
+              <td><%= subscription.plan.product %>
+              </td>
+            </tr>
+            <tr>
+              <th>Default source</th>
+              <td><%= subscription.default_source %>
+              </td>
+            </tr>
+            <tr>
+              <th>Status</th>
+              <td><%= subscription.status %></td>
+            </tr>
+          </tbody>
+        </table>
+      </li>
+      <% }); %>
+    </ul>
+
+  </main>
+
+
+  <script>
+    var stripe = Stripe('<%= stripePublicKey %>');
+
+    // Create an instance of Elements.
+    var elements = stripe.elements();
+
+    // Custom styling can be passed to options when creating an Element.
+    // (Note that this demo uses a wider set of styles than the guide below.)
+    var style = {
+      base: {
+        color: '#32325d',
+        fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+        fontSmoothing: 'antialiased',
+        fontSize: '16px',
+        '::placeholder': {
+          color: '#aab7c4'
+        }
+      },
+      invalid: {
+        color: '#fa755a',
+        iconColor: '#fa755a'
+      }
+    };
+
+    // Create an instance of the card Element.
+    var card = elements.create('card', { style: style });
+
+    // Add an instance of the card Element into the `card-element` <div>.
+    card.mount('#card-element');
+
+    // Handle real-time validation errors from the card Element.
+    card.addEventListener('change', function (event) {
+      var displayError = document.getElementById('card-errors');
+      if (event.error) {
+        displayError.textContent = event.error.message;
+      } else {
+        displayError.textContent = '';
+      }
+    });
+
+    // Handle form submission.
+    var form = document.getElementById('payment-form');
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      extraData = {
+        name: document.getElementById('cardholder_name').value
+      }
+      stripe.createToken(card, extraData).then(function (result) {
+        if (result.error) {
+          // Inform the user if there was an error.
+          var errorElement = document.getElementById('card-errors');
+          errorElement.textContent = result.error.message;
+        } else {
+          // Send the token to your server.
+          stripeTokenHandler(result.token);
+        }
+      });
+    });
+
+    // Submit the form with the token ID.
+    function stripeTokenHandler(token) {
+      console.log(token);
+      // Insert the token ID into the form so it gets submitted to the server
+      var form = document.getElementById('payment-form');
+      var hiddenInput = document.createElement('input');
+      hiddenInput.setAttribute('type', 'hidden');
+      hiddenInput.setAttribute('name', 'stripeToken');
+      hiddenInput.setAttribute('value', token.id);
+      form.appendChild(hiddenInput);
+
+      // Submit the form
+      form.submit();
+    }
+
+  </script>
+
+</body>
+
+</html>
