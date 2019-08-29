@@ -104,7 +104,7 @@ router.post('/:customerId/cards/:cardId/editcvc', async function (req, res, next
   const { cardId, customerId } = req.params;
   try {
     const charge = await stripe.createCvcCharge(customerId, cardId, cvcToken);
-    if (charge.id) {
+    if (charge && charge.id) {
       await stripe.cancelCharge(charge.id);
     }
     res.redirect(`/customers/${customerId}`);

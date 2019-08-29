@@ -48,9 +48,6 @@ module.exports = {
   updateCard: async (customerId, cardId, data) => {
     const { cardholder_name, expdate, zipcode } = data;
     const [exp_month, exp_year] = expdate.split('/');
-    console.log('expdate=', expdate);
-    console.log('exp_month=', exp_month);
-    console.log('exp_year=', exp_year);
     return stripe.customers.updateSource(
       customerId,
       cardId, {
